@@ -1,0 +1,1 @@
+*/30 * * * * root /opt/challenges/endpoint2_backup.sh

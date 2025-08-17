@@ -1,0 +1,16 @@
+[Unit]
+Description={{ name }}
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User={{ user }}
+Group={{ user }}
+EnvironmentFile=-/etc/default/{{ name }}
+ExecStart=/opt/endpoints/{{ name }}/server -port $PORT -logdir $LOG_DIR
+WorkingDirectory=/opt/endpoints/{{ name }}
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
+

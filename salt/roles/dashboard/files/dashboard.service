@@ -1,0 +1,14 @@
+[Unit]
+Description=Lab Challenge Dashboard
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+EnvironmentFile=-/etc/default/lab-dashboard
+ExecStart=/opt/dashboard/dashboard
+User=root
+Restart=always
+RestartSec=1
+
+[Install]
+WantedBy=multi-user.target
