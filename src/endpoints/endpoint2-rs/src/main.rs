@@ -12,7 +12,10 @@ fn env_or(key: &str, default: &str) -> String {
     env::var(key).unwrap_or_else(|_| default.to_string())
 }
 fn now_ms() -> u128 {
-    SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_millis()
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap()
+        .as_millis()
 }
 fn write_devnull(msg: &str) {
     if let Ok(mut devnull) = OpenOptions::new().write(true).open("/dev/null") {
@@ -67,7 +70,11 @@ fn handle_req(req: Request, logdir: &PathBuf) {
             );
         }
         Err(e) => {
-            write_devnull(&format!("open log file failed at {}: {}", path.display(), e));
+            write_devnull(&format!(
+                "open log file failed at {}: {}",
+                path.display(),
+                e
+            ));
             let body = r#"{"service":"endpoint2","ok":false,"error":"WRITE_FAILED"}"#;
             let _ = req.respond(
                 Response::from_string(body)
@@ -89,4 +96,3 @@ fn main() {
         handle_req(req, &log_dir);
     }
 }
-

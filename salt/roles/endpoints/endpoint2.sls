@@ -10,6 +10,10 @@ endpoint2-user:
     - user: endpoint2
     - group: endpoint2
     - mode: '0755'
+    - require:
+      - user: endpoint2-user
+    - require_in:
+      - service: endpoints-enabled
 
 /var/log/endpoint2/logs:
   file.directory:

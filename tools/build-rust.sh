@@ -5,13 +5,14 @@ set -euo pipefail
 #   VERSION: e.g. v2
 #   ARCH:    amd64 | arm64
 
-VER="${1:-v2}"
-ARCH_IN="${2:-amd64}"
+SVC="${1}"
+VER="${2:-v2}"
+ARCH_IN="${3:-amd64}"
 
 ROOT="$(git rev-parse --show-toplevel)"
-SRC="${ROOT}/src/endpoints/endpoint2-rs"
+SRC="${ROOT}/src/endpoints/${SVC}-rs"
 OUT="${ROOT}/artifacts/${VER}"
-BIN_NAME="endpoint2"
+BIN_NAME="${SVC}"
 
 # Map ARCH -> Rust target triples (musl preferred, glibc as fallback)
 case "${ARCH_IN}" in

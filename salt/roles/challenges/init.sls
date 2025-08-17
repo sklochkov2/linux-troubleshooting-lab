@@ -37,3 +37,22 @@ apply-dns-poison:
 apply-endpoint2-breakage:
   cmd.run:
     - name: /opt/challenges/inject_log_ownership.sh
+    - require:
+      - service: endpoints-enabled
+
+/opt/challenges/inject_lockfile_endpoint3.sh:
+  file.managed:
+    - source: salt://roles/challenges/files/inject_lockfile_endpoint3.sh
+    - mode: '0755'
+
+/opt/challenges/reset_lockfile_endpoint3.sh:
+  file.managed:
+    - source: salt://roles/challenges/files/reset_lockfile_endpoint3.sh
+    - mode: '0755'
+
+# Apply at bake time so the endpoint starts in maintenance mode
+apply-endpoint3-lock:
+  cmd.run:
+    - name: /opt/challenges/inject_lockfile_endpoint3.sh
+    - require:
+      - service: endpoints-enabled

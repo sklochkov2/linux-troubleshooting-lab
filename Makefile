@@ -34,7 +34,8 @@ help:
 .PHONY: artifacts
 artifacts:
 	./tools/build-go.sh $(VERSION) $(ARCH)
-	./tools/build-rust.sh $(VERSION) $(ARCH)
+	./tools/build-rust.sh endpoint2 $(VERSION) $(ARCH)
+	./tools/build-rust.sh endpoint3 $(VERSION) $(ARCH)
 
 # ----- Packer -----
 .PHONY: packer-init

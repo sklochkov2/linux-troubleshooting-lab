@@ -1,10 +1,10 @@
+{# salt/roles/endpoints/_macros.jinja #}
 {% macro arch() -%}
 {% set arch_map = {'x86_64': 'amd64', 'aarch64': 'arm64'} -%}
 {{ arch_map.get(grains['cpuarch'], 'amd64') }}
 {%- endmacro %}
 
 {% macro install_binary(name) -%}
-# extract artifact tarball to /opt/endpoints/{{name}}
 extract-{{name}}:
   archive.extracted:
     - name: /opt/endpoints/{{name}}
@@ -12,6 +12,8 @@ extract-{{name}}:
     - enforce_toplevel: False
     - require:
       - cmd: verify-artifacts
+    - require_in:
+      - service: endpoints-enabled
 
 /opt/endpoints/{{name}}/server:
   file.managed:
@@ -19,6 +21,8 @@ extract-{{name}}:
     - mode: '0755'
     - user: {{name}}
     - group: {{name}}
+    - require_in:
+      - service: endpoints-enabled
 {%- endmacro %}
 
 {% macro envfile(name, port, log_dir) -%}
@@ -27,6 +31,8 @@ extract-{{name}}:
     - source: salt://roles/endpoints/templates/endpoint.env.j2
     - template: jinja
     - context: { port: {{port}}, log_dir: "{{log_dir}}", name: "{{name}}" }
+    - require_in:
+      - service: endpoints-enabled
 {%- endmacro %}
 
 {% macro unitfile(name, user, port) -%}
@@ -35,6 +41,10 @@ extract-{{name}}:
     - source: salt://roles/endpoints/templates/endpoint.service.j2
     - template: jinja
     - context: { name: "{{name}}", user: "{{user}}", port: {{port}} }
+    - require:
+      - user: {{name}}-user
     - watch_in:
       - cmd: systemctl-daemon-reload
+    - require_in:
+      - service: endpoints-enabled
 {%- endmacro %}
