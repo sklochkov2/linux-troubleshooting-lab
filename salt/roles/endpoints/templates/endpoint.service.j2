@@ -10,6 +10,8 @@ EnvironmentFile=-/etc/default/{{ name }}
 ExecStart=/opt/endpoints/{{ name }}/server -port $PORT -logdir $LOG_DIR
 WorkingDirectory=/opt/endpoints/{{ name }}
 Restart=on-failure
+StandardError=journal
+{% if limit_nofile is defined %}LimitNOFILE={{ limit_nofile }}{% endif %}
 
 [Install]
 WantedBy=multi-user.target

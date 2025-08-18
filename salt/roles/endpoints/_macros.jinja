@@ -35,12 +35,16 @@ extract-{{name}}:
       - service: endpoints-enabled
 {%- endmacro %}
 
-{% macro unitfile(name, user, port) -%}
+{% macro unitfile(name, user, port, limit_nofile=None) -%}
 /etc/systemd/system/{{name}}.service:
   file.managed:
     - source: salt://roles/endpoints/templates/endpoint.service.j2
     - template: jinja
-    - context: { name: "{{name}}", user: "{{user}}", port: {{port}} }
+    - context:
+        name: "{{name}}"
+        user: "{{user}}"
+        port: {{port}}
+        {% if limit_nofile is not none %}limit_nofile: {{limit_nofile}}{% endif %}
     - require:
       - user: {{name}}-user
     - watch_in:
