@@ -37,6 +37,7 @@ artifacts:
 	./tools/build-rust.sh endpoint2 $(VERSION) $(ARCH)
 	./tools/build-rust.sh endpoint3 $(VERSION) $(ARCH)
 	./tools/build-rust.sh endpoint4 $(VERSION) $(ARCH)
+	./tools/build-rust.sh endpoint5 $(VERSION) $(ARCH)
 
 # ----- Packer -----
 .PHONY: packer-init

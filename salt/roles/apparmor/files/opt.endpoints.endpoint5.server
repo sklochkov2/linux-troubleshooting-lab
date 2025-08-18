@@ -1,0 +1,34 @@
+# /etc/apparmor.d/opt.endpoints.endpoint5.server
+#include <tunables/global>
+
+profile opt.endpoints.endpoint5.server /opt/endpoints/endpoint5/server flags=(attach_disconnected) {
+  # Base rules
+  #include <abstractions/base>
+  #include <abstractions/nameservice>
+
+  # Map & execute the binary itself
+  /opt/endpoints/endpoint5/server mr,
+
+  # Networking (loopback HTTP)
+  network inet stream,
+
+  # Logs
+  /var/log/endpoint5/ rw,
+  /var/log/endpoint5/** rwk,
+
+  # Config dir is visible...
+  /etc/endpoint5/ r,
+  # ...but the specific config file is DENIED (the intended fault)
+  deny /etc/endpoint5/config.json r,
+
+  # Allow common loader/lib reads if built against glibc
+  /etc/ld.so.cache r,
+  /etc/ld.so.conf r,
+  /etc/ld.so.conf.d/** r,
+  /lib/** mr,
+  /usr/lib/** mr,
+
+  # Proc/sys harmless reads
+  /proc/** r,
+  /sys/** r,
+}

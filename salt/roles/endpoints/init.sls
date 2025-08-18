@@ -3,6 +3,7 @@ include:
   - roles.endpoints.endpoint2
   - roles.endpoints.endpoint3
   - roles.endpoints.endpoint4
+  - roles.endpoints.endpoint5
 
 # After all endpoints are defined, enable/start them here so we keep ordering simple
 endpoints-enabled:
@@ -11,6 +12,7 @@ endpoints-enabled:
       - endpoint2
       - endpoint3
       - endpoint4
+      - endpoint5
     - enable: true
     - require:
       - cmd: systemctl-daemon-reload
