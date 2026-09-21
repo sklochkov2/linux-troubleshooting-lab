@@ -8,10 +8,9 @@ source "${ROOT}/versions.env"
 BUILD_DIR="${ROOT}/build"
 DOWNLOAD_DIR="${BUILD_DIR}/downloads"
 SOURCE_DIR="${BUILD_DIR}/sources"
-OUTPUT_DIR="${BUILD_DIR}/buildroot-output-x86_64-musl"
+SYSTEM_OUTPUT_DIR="${BUILD_DIR}/buildroot-output-x86_64-musl"
+DATABASE_OUTPUT_DIR="${BUILD_DIR}/buildroot-output-x86_64-musl-database"
 DIST_DIR="${ROOT}/dist"
-TOOLCHAIN_SIGNATURE="x86_64-musl-headers-6.12-v2"
-TOOLCHAIN_SIGNATURE_FILE="${OUTPUT_DIR}/.lab-toolchain-signature"
 
 mkdir -p "${HOME}" "${DOWNLOAD_DIR}" "${SOURCE_DIR}"
 
@@ -81,37 +80,55 @@ download \
 extract_once "${BUILDROOT_ARCHIVE}" "${BUILDROOT_SOURCE}"
 extract_once "${TINYEMU_ARCHIVE}" "${TINYEMU_SOURCE}"
 
-if [[ -d "${OUTPUT_DIR}/host" ]] &&
-    [[ "$(cat "${TOOLCHAIN_SIGNATURE_FILE}" 2>/dev/null || true)" != \
-        "${TOOLCHAIN_SIGNATURE}" ]]; then
-    echo "[*] Toolchain settings changed; cleaning the active Buildroot output"
-    make -C "${BUILDROOT_SOURCE}" O="${OUTPUT_DIR}" clean
-fi
-mkdir -p "${OUTPUT_DIR}"
-printf '%s\n' "${TOOLCHAIN_SIGNATURE}" > "${TOOLCHAIN_SIGNATURE_FILE}"
+prepare_output() {
+    local output_dir="$1"
+    local toolchain_signature="$2"
+    local defconfig="$3"
+    shift 3
+    local signature_file="${output_dir}/.lab-toolchain-signature"
+    local package
 
-echo "[*] Configuring Buildroot"
-make -C "${BUILDROOT_SOURCE}" \
-    O="${OUTPUT_DIR}" \
-    BR2_EXTERNAL="${ROOT}/buildroot" \
-    lab_x86_64_defconfig
+    if [[ -d "${output_dir}/host" ]] &&
+        [[ "$(cat "${signature_file}" 2>/dev/null || true)" != \
+            "${toolchain_signature}" ]]; then
+        echo "[*] Toolchain settings changed; cleaning ${output_dir}"
+        make -C "${BUILDROOT_SOURCE}" O="${output_dir}" clean
+    fi
+    mkdir -p "${output_dir}"
+    printf '%s\n' "${toolchain_signature}" > "${signature_file}"
 
-# Buildroot does not automatically notice changes inside a local package after
-# it has stamped that package as built. Always invalidate the scenario package
-# so editing server.c and running `make image` is sufficient.
-make -C "${BUILDROOT_SOURCE}" \
-    O="${OUTPUT_DIR}" \
-    BR2_EXTERNAL="${ROOT}/buildroot" \
-    endpoint3-js-dirclean
-make -C "${BUILDROOT_SOURCE}" \
-    O="${OUTPUT_DIR}" \
-    BR2_EXTERNAL="${ROOT}/buildroot" \
-    lab-endpoints-dirclean
+    echo "[*] Configuring ${defconfig}"
+    make -C "${BUILDROOT_SOURCE}" \
+        O="${output_dir}" \
+        BR2_EXTERNAL="${ROOT}/buildroot" \
+        "${defconfig}"
 
-echo "[*] Building the x86_64 root filesystem"
-make -C "${BUILDROOT_SOURCE}" \
-    O="${OUTPUT_DIR}" \
-    BR2_EXTERNAL="${ROOT}/buildroot"
+    # Local packages are not automatically rebuilt after their source changes.
+    for package in "$@"; do
+        make -C "${BUILDROOT_SOURCE}" \
+            O="${output_dir}" \
+            BR2_EXTERNAL="${ROOT}/buildroot" \
+            "${package}-dirclean"
+    done
+
+    echo "[*] Building ${defconfig}"
+    make -C "${BUILDROOT_SOURCE}" \
+        O="${output_dir}" \
+        BR2_EXTERNAL="${ROOT}/buildroot"
+}
+
+prepare_output \
+    "${SYSTEM_OUTPUT_DIR}" \
+    "x86_64-musl-headers-6.12-v2" \
+    lab_x86_64_defconfig \
+    endpoint3-js \
+    lab-endpoints
+
+prepare_output \
+    "${DATABASE_OUTPUT_DIR}" \
+    "x86_64-musl-cxx-headers-6.12-v1" \
+    lab_database_x86_64_defconfig \
+    database-challenge
 
 echo "[*] Building TinyEMU image splitter"
 mkdir -p "${BUILD_DIR}/bin"
@@ -123,9 +140,11 @@ cc -O2 -Wall -Wextra \
 echo "[*] Assembling static web distribution"
 rm -rf "${DIST_DIR}"
 mkdir -p "${DIST_DIR}/root-x86_64-${LAB_IMAGE_VERSION}"
+mkdir -p \
+    "${DIST_DIR}/root-x86_64-database-${LAB_DATABASE_IMAGE_VERSION}"
 
 cp "${DOWNLOAD_DIR}/kernel-x86_64-new.bin" \
-    "${DIST_DIR}/kernel-x86_64-lab-${LAB_IMAGE_VERSION}.bin"
+    "${DIST_DIR}/kernel-x86_64-lab-${JSLINUX_RELEASE}.bin"
 cp "${DOWNLOAD_DIR}/x86_64emu-wasm.js" "${DIST_DIR}/"
 cp "${DOWNLOAD_DIR}/x86_64emu-wasm.wasm" "${DIST_DIR}/"
 cp "${DOWNLOAD_DIR}/term.js" "${DIST_DIR}/"
@@ -134,12 +153,23 @@ cp "${DOWNLOAD_DIR}/jslinux.css" "${DIST_DIR}/"
 cp -R "${ROOT}/web/." "${DIST_DIR}/"
 sed -i "s/__LAB_IMAGE_VERSION__/${LAB_IMAGE_VERSION}/g" \
     "${DIST_DIR}/challenge.html"
-printf 'window.LAB_IMAGE_VERSION = "%s";\n' "${LAB_IMAGE_VERSION}" \
-    > "${DIST_DIR}/image-version-${LAB_IMAGE_VERSION}.js"
+sed -i "s/__LAB_DATABASE_IMAGE_VERSION__/${LAB_DATABASE_IMAGE_VERSION}/g" \
+    "${DIST_DIR}/challenge.html"
+cat > \
+    "${DIST_DIR}/image-versions-${LAB_IMAGE_VERSION}-${LAB_DATABASE_IMAGE_VERSION}.js" <<EOF
+window.LAB_IMAGE_VERSIONS = {
+  system: "${LAB_IMAGE_VERSION}",
+  database: "${LAB_DATABASE_IMAGE_VERSION}"
+};
+EOF
 
 "${BUILD_DIR}/bin/splitimg" \
-    "${OUTPUT_DIR}/images/rootfs.ext2" \
+    "${SYSTEM_OUTPUT_DIR}/images/rootfs.ext2" \
     "${DIST_DIR}/root-x86_64-${LAB_IMAGE_VERSION}" \
+    256
+"${BUILD_DIR}/bin/splitimg" \
+    "${DATABASE_OUTPUT_DIR}/images/rootfs.ext2" \
+    "${DIST_DIR}/root-x86_64-database-${LAB_DATABASE_IMAGE_VERSION}" \
     256
 
 cat > "${DIST_DIR}/root-x86_64-${LAB_IMAGE_VERSION}.cfg" <<EOF
@@ -147,18 +177,32 @@ cat > "${DIST_DIR}/root-x86_64-${LAB_IMAGE_VERSION}.cfg" <<EOF
     version: 1,
     machine: "pc",
     memory_size: 512,
-    kernel: "kernel-x86_64-lab-${LAB_IMAGE_VERSION}.bin",
+    kernel: "kernel-x86_64-lab-${JSLINUX_RELEASE}.bin",
     cmdline: "loglevel=3 console=hvc0 root=/dev/vda rw",
     drive0: { file: "root-x86_64-${LAB_IMAGE_VERSION}/blk.txt" },
 }
 EOF
 
+cat > \
+    "${DIST_DIR}/root-x86_64-database-${LAB_DATABASE_IMAGE_VERSION}.cfg" <<EOF
+{
+    version: 1,
+    machine: "pc",
+    memory_size: 512,
+    kernel: "kernel-x86_64-lab-${JSLINUX_RELEASE}.bin",
+    cmdline: "loglevel=3 console=hvc0 root=/dev/vda rw",
+    drive0: { file: "root-x86_64-database-${LAB_DATABASE_IMAGE_VERSION}/blk.txt" },
+}
+EOF
+
 cat > "${DIST_DIR}/build-info.txt" <<EOF
-Lab image ${LAB_IMAGE_VERSION}
+System image ${LAB_IMAGE_VERSION}
+Database image ${LAB_DATABASE_IMAGE_VERSION}
 Buildroot ${BUILDROOT_VERSION} x86_64/musl
 JSLinux x86_64 runtime ${JSLINUX_RELEASE}
 TinyEMU ${TINYEMU_VERSION}
-Scenarios endpoint1..endpoint4
+System scenarios endpoint1..endpoint4
+Database scenarios database1
 EOF
 
 echo "[+] Built ${DIST_DIR}"

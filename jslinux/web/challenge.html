@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Challenge · Linux troubleshooting lab</title>
   <link href="jslinux.css" rel="stylesheet">
-  <link href="lab.css?v=__LAB_IMAGE_VERSION__" rel="stylesheet">
+  <link href="lab.css?v=__LAB_IMAGE_VERSION__-__LAB_DATABASE_IMAGE_VERSION__" rel="stylesheet">
 </head>
 <body>
   <main class="lab">
@@ -23,6 +23,12 @@
         <span class="status-label">Challenge status</span>
         <strong id="challenge-status" class="status status-starting">Starting VM</strong>
         <span id="status-detail" class="status-detail">Waiting for the guest probe</span>
+        <dl id="database-metrics" class="database-metrics" hidden>
+          <div><dt>Runtime</dt><dd id="metric-runtime">—</dd></div>
+          <div><dt>Matched rows</dt><dd id="metric-matched">—</dd></div>
+          <div><dt>Rows read</dt><dd id="metric-read">—</dd></div>
+          <div><dt>Dataset rows</dt><dd id="metric-total">—</dd></div>
+        </dl>
       </section>
     </header>
 
@@ -58,10 +64,10 @@
     </footer>
   </main>
 
-  <script src="image-version-__LAB_IMAGE_VERSION__.js"></script>
+  <script src="image-versions-__LAB_IMAGE_VERSION__-__LAB_DATABASE_IMAGE_VERSION__.js"></script>
   <script src="term.js"></script>
-  <script src="boot-config.js?v=__LAB_IMAGE_VERSION__"></script>
+  <script src="boot-config.js?v=__LAB_IMAGE_VERSION__-__LAB_DATABASE_IMAGE_VERSION__"></script>
   <script src="jslinux.js"></script>
-  <script src="lab-ui.js?v=__LAB_IMAGE_VERSION__"></script>
+  <script src="lab-ui.js?v=__LAB_IMAGE_VERSION__-__LAB_DATABASE_IMAGE_VERSION__"></script>
 </body>
 </html>

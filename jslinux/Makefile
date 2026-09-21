@@ -1,7 +1,7 @@
 BUILDER_IMAGE ?= linux-troubleshooting-lab-jslinux-builder
 PORT ?= 8000
 
-.PHONY: all image builder serve clean
+.PHONY: all image builder serve clean clean-system-output clean-database-output
 
 all: image
 
@@ -21,3 +21,9 @@ serve:
 
 clean:
 	rm -rf build dist
+
+clean-system-output:
+	rm -rf build/buildroot-output-x86_64-musl
+
+clean-database-output:
+	rm -rf build/buildroot-output-x86_64-musl-database

@@ -5,9 +5,11 @@ troubleshooting lab. The result is a static website: the x86_64 emulator, Linux
 kernel, guest disk, terminal, and challenge status UI all run in the
 participant's browser. No per-participant VM or application backend is needed.
 
-The shared image contains four selectable challenges. Each challenge URL boots
-one active scenario, while the table of contents stays spoiler-free. The
-browser implementation is independent of the AWS/Packer/Salt deployment.
+The site contains two generated guest profiles: a lightweight system image with
+four selectable challenges and a MariaDB image with database-oriented
+challenges. Each challenge URL boots one active scenario, while the table of
+contents stays spoiler-free. The browser implementation is independent of the
+AWS/Packer/Salt deployment.
 
 ## Support status and release gate
 
@@ -54,8 +56,8 @@ Build host:
 - Docker with permission to run containers;
 - GNU Make;
 - Python 3 for the local development server;
-- approximately 15 GB of free disk space for Buildroot sources, toolchains,
-  intermediate files, and Docker layers;
+- approximately 30 GB of free disk space for two Buildroot outputs, sources,
+  toolchains, intermediate files, and Docker layers;
 - network access to `buildroot.org` and `bellard.org` during the first build.
 
 Deployment host:
@@ -64,7 +66,7 @@ Deployment host:
 - HTTPS for participant-facing deployments;
 - the ability to serve `.wasm` as `application/wasm`;
 - enough storage for the generated `dist/` directory, currently approximately
-  214 MB.
+  727 MB.
 
 The guest disk is split into 256 KiB chunks. Browsers load chunks on demand, so
 the initial transfer is smaller than the complete distribution size.
@@ -75,13 +77,17 @@ the initial transfer is smaller than the complete distribution size.
 jslinux/
 ├── buildroot/
 │   ├── board/lab/rootfs-overlay/
-│   │   ├── etc/init.d/            # guest startup scripts
 │   │   ├── etc/nginx/             # guest Nginx configuration
 │   │   ├── etc/init.d/            # scenario selector and guest services
 │   │   └── usr/sbin/              # status and scheduled guest scripts
+│   ├── board/lab/rootfs-database-overlay/
+│   │   ├── etc/init.d/            # MariaDB initialization
+│   │   └── usr/share/lab/         # database seed scripts
 │   ├── configs/
-│   │   └── lab_x86_64_defconfig   # architecture, tools, and packages
+│   │   ├── lab_x86_64_defconfig
+│   │   └── lab_database_x86_64_defconfig
 │   └── package/
+│       ├── database-challenge/    # database challenge API
 │       ├── endpoint3-js/          # challenge 3 service
 │       └── lab-endpoints/         # challenge 1, 2, and 4 services
 ├── docker/
@@ -125,6 +131,17 @@ musl binaries are installed under `/usr/sbin/`.
 
 Services must remain in the foreground. The scenario init script handles
 selection, backgrounding, users, resource limits, and PID files.
+
+The database challenge API is implemented in:
+
+```text
+jslinux/buildroot/package/database-challenge/src/database1.c
+```
+
+MariaDB configuration, startup, and initial SQL are under
+`buildroot/board/lab/rootfs-database-overlay/`. The database profile initializes
+its writable data directory in the browser VM, applies only the SQL selected by
+the kernel command line, and removes the seed file afterward.
 
 ### Change the initial broken state
 
@@ -226,6 +243,16 @@ ESC ] 777 ; lab-status ; endpoint3 ; STATUS BEL
 sequence before rendering terminal output and updates the indicator for the
 scenario selected by `LAB_SCENARIO=endpointN`.
 
+Database reports append validated numeric workload metrics:
+
+```text
+ESC ] 777 ; lab-status ; database1 ; STATUS ;
+  ELAPSED_MS ; MATCHED_ROWS ; ROWS_READ ; DATASET_ROWS BEL
+```
+
+The page displays these values, while elapsed time remains informational rather
+than a completion threshold.
+
 ### Update JSLinux, the kernel, TinyEMU, or Buildroot
 
 Pinned versions and SHA-256 hashes are stored in:
@@ -257,17 +284,19 @@ The first build:
 
 1. builds the Docker build environment;
 2. downloads and verifies pinned upstream assets;
-3. builds the x86_64/musl cross-toolchain;
-4. builds packages and all four endpoints;
-5. creates a 192 MB ext2 filesystem;
-6. splits the filesystem into HTTP-addressable chunks;
-7. assembles the complete static site under `jslinux/dist/`.
+3. builds a minimal x86_64/musl toolchain for the system profile;
+4. builds a C++-enabled x86_64/musl toolchain and MariaDB for the database
+   profile;
+5. creates 192 MB system and 512 MB database ext2 filesystems;
+6. splits both filesystems into HTTP-addressable chunks;
+7. assembles the shared runtime and both profiles under `jslinux/dist/`.
 
-The first build can take several minutes. Downloads and Buildroot outputs are
-cached in `jslinux/build/`; later builds are incremental.
+The initial database build can take 15–25 minutes. Downloads and both Buildroot
+outputs are cached in `jslinux/build/`; later builds are incremental and
+normally complete much faster.
 
-Each normal build forcibly recompiles both local endpoint packages and
-refreshes the root filesystem overlay and web files.
+Each normal build forcibly recompiles the local challenge packages and
+refreshes both root filesystem overlays and the web files.
 
 ### When to perform a clean build
 
@@ -289,6 +318,17 @@ make jslinux-image
 `clean` removes both `build/` and `dist/`, including downloaded archives and
 the compiled cross-toolchain.
 
+To reclaim one profile's intermediate space without deleting downloads or the
+other profile, use:
+
+```bash
+make -C jslinux clean-system-output
+make -C jslinux clean-database-output
+```
+
+The current cached outputs are approximately 7 GB for the system profile and
+14 GB for the MariaDB profile.
+
 ### Build output
 
 The deployable directory contains:
@@ -298,17 +338,20 @@ jslinux/dist/
 ├── index.html
 ├── challenge.html
 ├── boot-config.js
-├── image-version-<image-version>.js
+├── image-versions-<system-version>-<database-version>.js
 ├── lab-ui.js
 ├── lab.css
 ├── jslinux.js
 ├── term.js
 ├── x86_64emu-wasm.js
 ├── x86_64emu-wasm.wasm
-├── kernel-x86_64-lab-<image-version>.bin
+├── kernel-x86_64-lab-<runtime-version>.bin
 ├── root-x86_64-<image-version>.cfg
 ├── root-x86_64-<image-version>/blk.txt
 ├── root-x86_64-<image-version>/blk*.bin
+├── root-x86_64-database-<database-version>.cfg
+├── root-x86_64-database-<database-version>/blk.txt
+├── root-x86_64-database-<database-version>/blk*.bin
 └── build-info.txt
 ```
 
@@ -346,12 +389,13 @@ Perform this test after changing the guest, runtime, kernel, status protocol, or
 page.
 
 1. Open the table of contents in a supported desktop Chromium or Firefox
-   browser and confirm it lists challenges 1–4 without fault descriptions.
-2. Open each challenge and confirm the VM starts only the selected endpoint.
+   browser and confirm the System and Database groups reveal no fault details.
+2. Open each system challenge and confirm it uses the lightweight system image
+   and starts only the selected endpoint.
 3. Confirm the VM reaches `linux-lab login:` and the status becomes
    **Needs repair**.
 4. Log in as `root`; the prototype has no root password.
-5. Confirm the selected public in-guest path returns a non-2xx response:
+5. Confirm the selected system path returns a non-2xx response:
 
    ```bash
    scenario="$(cat /var/run/lab-scenario)"
@@ -364,8 +408,25 @@ page.
 9. Select **Reset challenge**.
 10. Confirm the VM boots again, the path returns a non-2xx response, and the
     indicator returns to **Needs repair**.
-11. Repeat the broken, repaired, and reset checks for all four challenges.
-12. Check the browser developer console for Wasm, CSP, MIME, or failed-request
+11. Repeat the broken, repaired, and reset checks for all four system
+    challenges.
+12. Open Database challenge 1 and confirm it selects the database image. Its
+    initial system-table and dataset creation can take approximately one
+    minute.
+13. Confirm the database API executes the real application query, initially
+    returns HTTP 503, and includes workload metrics:
+
+    ```bash
+    curl -i http://127.0.0.1/api/v1/database1
+    ```
+
+14. Confirm the page shows runtime, matched rows, rows read, and dataset rows.
+15. Apply the intended repair and confirm the API returns HTTP 200 and the page
+    becomes **Working**. Completion must depend on the correct result, intact
+    dataset, and bounded rows read—not wall-clock query time.
+16. Reset the database challenge and confirm its original schema and
+    **Needs repair** state return.
+17. Check the browser developer console for Wasm, CSP, MIME, or failed-request
     errors.
 
 The browser cannot directly request the guest's loopback or DHCP address.
@@ -539,6 +600,8 @@ curl -I https://lab.example.org/
 curl -I https://lab.example.org/x86_64emu-wasm.wasm
 curl -I https://lab.example.org/root-x86_64-20260919-3.cfg
 curl -I https://lab.example.org/root-x86_64-20260919-3/blk.txt
+curl -I https://lab.example.org/root-x86_64-database-20260921-3.cfg
+curl -I https://lab.example.org/root-x86_64-database-20260921-3/blk.txt
 ```
 
 The Wasm response must include:
@@ -596,9 +659,10 @@ of `jslinux/dist/`.
 
 ## Caching and CDN behavior
 
-Kernel, VM configuration, and disk paths include `LAB_IMAGE_VERSION` from
-`versions.env`. Increment it whenever those assets change. HTML remains the
-entry point that selects the current version.
+VM configuration and disk paths include the independent
+`LAB_IMAGE_VERSION` and `LAB_DATABASE_IMAGE_VERSION` values from
+`versions.env`. Increment only the profile whose guest assets changed. HTML
+and the generated version manifest select the current files.
 
 Recommended defaults:
 
@@ -692,12 +756,15 @@ Check:
 Open browser developer tools and inspect failed requests. Verify:
 
 ```text
-kernel-x86_64-lab-<image-version>.bin
+kernel-x86_64-lab-<runtime-version>.bin
 x86_64emu-wasm.js
 x86_64emu-wasm.wasm
 root-x86_64-<image-version>.cfg
 root-x86_64-<image-version>/blk.txt
 root-x86_64-<image-version>/blk*.bin
+root-x86_64-database-<database-version>.cfg
+root-x86_64-database-<database-version>/blk.txt
+root-x86_64-database-<database-version>/blk*.bin
 ```
 
 Also confirm the browser has enough memory for the configured 512 MB guest.
@@ -722,6 +789,23 @@ curl -i "http://127.0.0.1/api/v1/${scenario}"
 Check that `lab-status-reporter` and `lab-ui.js` use the same scenario
 identifier and protocol.
 
+### The database guest remains at initialization
+
+The first database boot initializes MariaDB and inserts 100,000 rows in the
+browser VM. On slower machines this can take more than one minute. Check:
+
+```bash
+cat /var/log/mysql/install.log
+cat /var/log/mysql/mysqld.log
+ps | grep maria
+```
+
+If initialization completed but the endpoint did not start, run:
+
+```bash
+/etc/init.d/S40database restart
+```
+
 ### Nginx inside the guest fails
 
 Inside the guest:
@@ -743,8 +827,15 @@ new `dist/` atomically, and clear stale CDN/browser caches.
 
 ## Architecture notes and current limitations
 
-- One reproducible Buildroot image contains all four services, but
+- The system and database profiles share the emulator, kernel, frontend, and
+  Buildroot external tree but produce separate root disks.
+- The system image contains all four system services, while
   `LAB_SCENARIO=endpointN` starts only one per browser VM.
+- The database image contains MariaDB and uses
+  `LAB_SCENARIO=databaseN` to select initialization and challenge services.
+- The database reporter invokes the real API query periodically. Completion
+  requires the expected result, the complete dataset, and low MariaDB
+  `Rows_read`; elapsed query time is displayed but not scored.
 - The browser table of contents links to separate challenge URLs without
   describing their faults.
 - The services are small C implementations compiled with the guest toolchain.
@@ -755,8 +846,7 @@ new `dist/` atomically, and clear stale CDN/browser caches.
 - Reset reloads the page rather than hot-restarting the emulator.
 - External guest networking is not required. The AppArmor challenge remains
   out of scope because Bellard's supplied kernel does not enable that LSM.
-- The disk is block-backed because future database scenarios may depend on
-  filesystem locking and durability behavior that the JSLinux 9P backend does
-  not faithfully provide.
+- Both disks are block-backed because MariaDB depends on filesystem locking and
+  durability behavior that the JSLinux 9P backend does not faithfully provide.
 - The design and future implementation phases are documented in
   `../docs/jslinux-feasibility-and-design.md`.

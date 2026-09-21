@@ -4,7 +4,7 @@ scenario_from_cmdline() {
     scenario=endpoint1
     for argument in $(cat /proc/cmdline); do
         case "$argument" in
-            LAB_SCENARIO=endpoint[1-4])
+            LAB_SCENARIO=endpoint[1-4]|LAB_SCENARIO=database1)
                 scenario="${argument#LAB_SCENARIO=}"
                 ;;
         esac

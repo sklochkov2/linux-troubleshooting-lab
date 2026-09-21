@@ -10,7 +10,57 @@ emit_status() {
     printf '\033]777;lab-status;%s;%s\a' "$SCENARIO" "$1" > "$CONSOLE"
 }
 
+emit_database_status() {
+    printf '\033]777;lab-status;%s;%s;%s;%s;%s;%s\a' \
+        "$SCENARIO" "$1" "$2" "$3" "$4" "$5" > "$CONSOLE"
+}
+
+json_number() {
+    key="$1"
+    file="$2"
+    sed -n "s/.*\"${key}\":\\([0-9][0-9]*\\).*/\\1/p" "$file"
+}
+
 emit_status starting
+
+if [ "$SCENARIO" = "database1" ]; then
+    INTERVAL=8
+    RESPONSE=/tmp/lab-database-status.json
+
+    while true; do
+        : > "$RESPONSE"
+        http_code="$(
+            curl --silent --show-error --max-time 20 \
+                --output "$RESPONSE" \
+                --write-out '%{http_code}' \
+                "$URL" || true
+        )"
+        elapsed_ms="$(json_number elapsed_ms "$RESPONSE")"
+        matched_rows="$(json_number matched_rows "$RESPONSE")"
+        rows_read="$(json_number rows_read "$RESPONSE")"
+        dataset_rows="$(json_number dataset_rows "$RESPONSE")"
+
+        if [ -n "$elapsed_ms" ] &&
+            [ -n "$matched_rows" ] &&
+            [ -n "$rows_read" ] &&
+            [ -n "$dataset_rows" ]; then
+            if [ "$http_code" = "200" ]; then
+                state=healthy
+            else
+                state=unhealthy
+            fi
+            emit_database_status \
+                "$state" \
+                "$elapsed_ms" \
+                "$matched_rows" \
+                "$rows_read" \
+                "$dataset_rows"
+        else
+            emit_status unhealthy
+        fi
+        sleep "$INTERVAL"
+    done
+fi
 
 while true; do
     if wget -q -T 2 -O /dev/null "$URL"; then

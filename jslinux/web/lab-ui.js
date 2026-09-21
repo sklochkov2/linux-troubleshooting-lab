@@ -13,12 +13,21 @@
   var sendButton = document.getElementById("send-console");
   var sendEnterButton = document.getElementById("send-console-enter");
   var scenario = window.LAB_SCENARIO;
-  var challengeNumber = scenario.slice(-1);
+  var metadata = window.LAB_SCENARIO_META;
+  var challengeLabel =
+    metadata.category + " challenge " + metadata.number;
+  var metricsElement = document.getElementById("database-metrics");
+  var runtimeElement = document.getElementById("metric-runtime");
+  var matchedElement = document.getElementById("metric-matched");
+  var readElement = document.getElementById("metric-read");
+  var totalElement = document.getElementById("metric-total");
+
+  metricsElement.hidden = metadata.family !== "database";
 
   document.getElementById("challenge-title").textContent =
-    "Challenge " + challengeNumber;
+    challengeLabel;
   document.title =
-    "Challenge " + challengeNumber + " · Linux troubleshooting lab";
+    challengeLabel + " · Linux troubleshooting lab";
 
   function setStatus(state) {
     var labels = {
@@ -28,7 +37,10 @@
       unknown: "Status unavailable"
     };
     var details = {
-      starting: "Waiting for the guest probe",
+      starting:
+        metadata.family === "database"
+          ? "Preparing the database environment"
+          : "Waiting for the guest probe",
       unhealthy: "The in-guest endpoint probe is failing",
       healthy: "The in-guest endpoint probe succeeded",
       unknown: "No recent status received from the guest"
@@ -39,13 +51,45 @@
     detailElement.textContent = details[state];
   }
 
+  setStatus("starting");
+
+  function clearMetrics() {
+    runtimeElement.textContent = "—";
+    matchedElement.textContent = "—";
+    readElement.textContent = "—";
+    totalElement.textContent = "—";
+  }
+
+  function updateMetrics(fields) {
+    runtimeElement.textContent =
+      Number(fields[2]).toLocaleString() + " ms";
+    matchedElement.textContent = Number(fields[3]).toLocaleString();
+    readElement.textContent = Number(fields[4]).toLocaleString();
+    totalElement.textContent = Number(fields[5]).toLocaleString();
+  }
+
   function receive(payload) {
     var fields = payload.split(";");
     if (
-      fields.length !== 2 ||
       fields[0] !== scenario ||
       !/^(starting|unhealthy|healthy)$/.test(fields[1])
     ) {
+      return;
+    }
+    if (metadata.family === "database") {
+      if (
+        fields.length === 6 &&
+        fields.slice(2).every(function (value) {
+          return /^[0-9]+$/.test(value);
+        })
+      ) {
+        updateMetrics(fields);
+      } else if (fields.length === 2) {
+        clearMetrics();
+      } else {
+        return;
+      }
+    } else if (fields.length !== 2) {
       return;
     }
 
@@ -135,8 +179,12 @@
   }, 10);
 
   window.setInterval(function () {
-    if (lastStatusAt > 0 && Date.now() - lastStatusAt > 12000) {
+    var staleAfter = metadata.family === "database" ? 30000 : 12000;
+    if (lastStatusAt > 0 && Date.now() - lastStatusAt > staleAfter) {
       setStatus("unknown");
+      if (metadata.family === "database") {
+        clearMetrics();
+      }
     }
   }, 3000);
 

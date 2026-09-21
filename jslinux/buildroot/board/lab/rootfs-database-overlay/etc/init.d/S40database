@@ -1,0 +1,93 @@
+#!/bin/sh
+
+MYSQL_DATA=/var/lib/mysql
+MYSQL_RUN=/run/mysql
+MYSQL_LOG=/var/log/mysql
+MYSQL_PIDFILE="${MYSQL_RUN}/mysqld.pid"
+SEED_SQL=/usr/share/lab/database1.sql
+
+selected() {
+    [ "$(cat /var/run/lab-scenario 2>/dev/null)" = "database1" ]
+}
+
+wait_for_database() {
+    attempts=90
+    while [ "$attempts" -gt 0 ]; do
+        if /usr/bin/mysqladmin --user=root ping >/dev/null 2>&1; then
+            return 0
+        fi
+        sleep 1
+        attempts=$((attempts - 1))
+    done
+    return 1
+}
+
+start_database() {
+    install -d -o mysql -g mysql -m 0750 "$MYSQL_DATA"
+    install -d -o mysql -g mysql -m 0755 "$MYSQL_RUN" "$MYSQL_LOG"
+
+    if [ ! -d "${MYSQL_DATA}/mysql" ]; then
+        echo "Preparing database system tables..."
+        /usr/bin/mysql_install_db \
+            --basedir=/usr \
+            --datadir="$MYSQL_DATA" \
+            --user=mysql \
+            --auth-root-authentication-method=normal \
+            --skip-test-db >/var/log/mysql/install.log 2>&1
+    fi
+
+    echo "Starting database server..."
+    /usr/bin/mysqld_safe \
+        --user=mysql \
+        --pid-file="$MYSQL_PIDFILE" \
+        --log-error="${MYSQL_LOG}/mysqld.log" >/dev/null 2>&1 &
+
+    if ! wait_for_database; then
+        echo "Database server did not become ready"
+        return 1
+    fi
+
+    if [ -f "$SEED_SQL" ]; then
+        echo "Preparing database challenge data..."
+        if ! /usr/bin/mysql --user=root < "$SEED_SQL"; then
+            echo "Database challenge data could not be created"
+            return 1
+        fi
+        rm -f "$SEED_SQL"
+    fi
+}
+
+start_endpoint() {
+    start-stop-daemon -S -q -b -m -p /var/run/database1.pid \
+        -c database1:database1 -x /usr/sbin/database1
+}
+
+stop_all() {
+    if [ -f /var/run/database1.pid ]; then
+        start-stop-daemon -K -q -p /var/run/database1.pid || true
+        rm -f /var/run/database1.pid
+    fi
+    /usr/bin/mysqladmin --user=root shutdown >/dev/null 2>&1 || true
+}
+
+case "$1" in
+    start)
+        selected || exit 0
+        start_database
+        printf 'Starting database challenge: '
+        start_endpoint
+        echo OK
+        ;;
+    stop)
+        stop_all
+        ;;
+    restart)
+        stop_all
+        start_database
+        start_endpoint
+        ;;
+    *)
+        echo "Usage: $0 {start|stop|restart}"
+        exit 1
+        ;;
+esac

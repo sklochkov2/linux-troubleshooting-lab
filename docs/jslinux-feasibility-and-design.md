@@ -1,7 +1,7 @@
 # JSLinux feasibility, design, and implementation plan
 
-**Status:** Proposed  
-**Last updated:** 2026-09-18  
+**Status:** Implemented prototype
+**Last updated:** 2026-09-21
 **Scope:** Browser-hosted replacement for the AWS runtime
 
 ## Executive decision
@@ -10,10 +10,16 @@ The lab can be reimplemented on JSLinux while preserving real Linux processes,
 syscalls, file permissions, signals, sockets, resource limits, and tools such
 as `strace` and `lsof`.
 
-Implementation status: one shared x86_64/musl image now provides challenges
-1–4, with one scenario selected per browser VM and a spoiler-free index.
-Endpoint 5 remains out of scope because Bellard's supplied kernel does not
-enable AppArmor.
+Implementation status: a lightweight x86_64/musl system image provides
+challenges 1–4, and a separate MariaDB image provides database challenges.
+Each browser VM runs one selected scenario, and the UI groups the two families
+without describing their faults. Endpoint 5 remains out of scope because
+Bellard's supplied kernel does not enable AppArmor.
+
+The database profile runs its real application query from the guest reporter
+and publishes elapsed time, matched rows, rows read, and dataset size to the
+page. Completion uses result correctness, dataset integrity, and bounded
+`Rows_read`; elapsed time is intentionally not a pass/fail threshold.
 
 This is a conditional recommendation rather than a drop-in migration:
 
@@ -30,7 +36,8 @@ This is a conditional recommendation rather than a drop-in migration:
 
 The recommended product model is:
 
-1. Maintain one reproducible base guest image.
+1. Maintain a small set of reproducible guest profiles sharing one runtime and
+   common Buildroot definitions.
 2. Run one selected scenario per browser VM.
 3. Select the scenario at boot and start only its required services.
 4. Render the status indicator beside the JSLinux console in the parent page.
@@ -123,16 +130,25 @@ The trade-off is that participants no longer inspect one crowded production-like
 node. That mode can remain an advanced exercise after the browser runtime is
 stable.
 
-### Decision: one logical base image, not independently maintained images
+### Decision: shared definitions with workload-specific image profiles
 
-The repository should have one image definition containing:
+The repository maintains common guest definitions containing:
 
 - the chosen Linux userspace;
 - diagnostic tools such as `strace`, `lsof`, `ps`, `ss`, `curl`, `dig` or
   `getent`, and a text editor;
-- Nginx and the required runtime packages;
-- all prebuilt endpoint binaries and common service definitions;
+- Nginx and common runtime packages;
+- shared endpoint and service definitions;
 - a small boot selector and status reporter.
+
+Two generated profiles currently inherit those definitions:
+
+- a 192 MB system disk containing the four lightweight system scenarios;
+- a 512 MB database disk containing MariaDB, database tooling, and database
+  initialization scripts.
+
+This avoids making every system participant download or initialize a database,
+while retaining one emulator, kernel, frontend, and source tree.
 
 The page passes a scenario identifier on the kernel command line, for example
 `LAB_SCENARIO=endpoint3`. Early guest initialization then:
@@ -142,15 +158,14 @@ The page passes a scenario identifier on the kernel command line, for example
 3. starts Nginx and the status reporter;
 4. emits a ready event to the page.
 
-Files for inactive scenarios may exist in the base filesystem, but their
-services and injectors do not run. Because JSLinux's HTTP-backed 9P filesystem
-loads files lazily, unused binaries should not enter the browser working set.
-This assumption must be measured during the spike.
+Files for inactive scenarios may exist in the selected profile, but their
+services and injectors do not run. The split block image loads chunks lazily,
+so unused database or service blocks should not enter the browser working set.
 
-If inactive scenario files expose unacceptable spoilers or if endpoint 5 needs
-a materially different kernel, the same build pipeline can produce generated
-scenario variants. They must inherit the common package and configuration
-definition rather than becoming five manually maintained images.
+If inactive scenario files expose unacceptable spoilers or a scenario needs a
+materially different kernel, the same pipeline can produce another generated
+profile. Profiles must inherit common package and configuration definitions
+rather than becoming independently maintained images.
 
 ## Proposed browser architecture
 
@@ -536,8 +551,9 @@ stable.
 
 This provides strong isolation but duplicates distro, tools, updates, and build
 configuration. It was rejected in favor of one logical base with boot-time
-scenario selection. Generated variants remain acceptable where kernel or
-spoiler isolation requires them.
+scenario selection within a small number of workload profiles. The system and
+database profiles share their runtime and source definitions rather than being
+maintained per scenario.
 
 ### Browser TCP bridge to guest services
 

@@ -1,0 +1,5 @@
+#!/bin/sh
+
+# MariaDB is managed by S40database so challenge data is ready before the
+# browser status reporter starts.
+exit 0

@@ -41,8 +41,8 @@ Designed to run on minimal instances (e.g., `t3.micro`) to keep costs low.
 ## Browser-hosted prototype
 
 An x86_64 JSLinux implementation is available under `jslinux/`. It builds a
-static website containing the emulator, one shared Linux guest image, four
-selectable challenges, a terminal, and an in-page status indicator.
+static website containing the emulator, separate system and MariaDB guest
+profiles, grouped challenges, a terminal, and an in-page status indicator.
 
 For image customization, local testing, release preparation, web-server
 configuration, deployment, rollback, and troubleshooting, see the

@@ -108,6 +108,35 @@ h1 {
   color: #b4bac0;
 }
 
+.database-metrics {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px 14px;
+  margin: 10px 0 0;
+  padding-top: 10px;
+  border-top: 1px solid #394047;
+}
+
+.database-metrics[hidden] {
+  display: none;
+}
+
+.database-metrics div {
+  display: grid;
+  gap: 2px;
+}
+
+.database-metrics dt {
+  color: #8e969e;
+  font-size: 11px;
+}
+
+.database-metrics dd {
+  margin: 0;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+
 .console-panel {
   overflow: auto;
   padding: 16px;
@@ -147,6 +176,26 @@ h1 {
 .challenge-list {
   display: grid;
   border-top: 1px solid #394047;
+}
+
+.challenge-group {
+  margin-top: 34px;
+}
+
+.challenge-group h2 {
+  margin: 0 0 12px;
+  font-size: 18px;
+}
+
+.group-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.group-heading small {
+  color: #8e969e;
 }
 
 .challenge-list a {
