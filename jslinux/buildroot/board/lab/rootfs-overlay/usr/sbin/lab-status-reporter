@@ -1,0 +1,22 @@
+#!/bin/sh
+
+SCENARIO="$(cat /var/run/lab-scenario 2>/dev/null || printf endpoint1)"
+URL="http://127.0.0.1/api/v1/${SCENARIO}"
+CONSOLE=/dev/hvc0
+INTERVAL=3
+
+emit_status() {
+    # OSC 777 is reserved by the lab page and removed before terminal display.
+    printf '\033]777;lab-status;%s;%s\a' "$SCENARIO" "$1" > "$CONSOLE"
+}
+
+emit_status starting
+
+while true; do
+    if wget -q -T 2 -O /dev/null "$URL"; then
+        emit_status healthy
+    else
+        emit_status unhealthy
+    fi
+    sleep "$INTERVAL"
+done

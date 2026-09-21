@@ -1,0 +1,96 @@
+#!/bin/sh
+
+scenario_from_cmdline() {
+    scenario=endpoint1
+    for argument in $(cat /proc/cmdline); do
+        case "$argument" in
+            LAB_SCENARIO=endpoint[1-4])
+                scenario="${argument#LAB_SCENARIO=}"
+                ;;
+        esac
+    done
+    printf '%s' "$scenario"
+}
+
+start_service() {
+    name="$1"
+    user="$2"
+    shift 2
+    start-stop-daemon -S -q -b -m -p "/var/run/${name}.pid" \
+        -c "${user}:${user}" -x "/usr/sbin/${name}" -- "$@"
+}
+
+stop_services() {
+    for name in endpoint1-upstream endpoint1 endpoint2 endpoint3 endpoint4; do
+        if [ -f "/var/run/${name}.pid" ]; then
+            start-stop-daemon -K -q -p "/var/run/${name}.pid" || true
+            rm -f "/var/run/${name}.pid"
+        fi
+    done
+}
+
+start_scenario() {
+    scenario="$(scenario_from_cmdline)"
+    printf '%s\n' "$scenario" > /var/run/lab-scenario
+    printf 'Starting %s: ' "$scenario"
+
+    case "$scenario" in
+        endpoint1)
+            {
+                printf '127.0.0.3 upstream.lab # lab-initial-state\n'
+                cat /etc/hosts
+            } > /tmp/hosts.lab
+            cat /tmp/hosts.lab > /etc/hosts
+            rm -f /tmp/hosts.lab
+            start-stop-daemon -S -q -b -m -p /var/run/endpoint1-upstream.pid \
+                -c endpoint1:endpoint1 -x /usr/sbin/endpoint1 -- --upstream
+            start_service endpoint1 endpoint1
+            ;;
+        endpoint2)
+            mkdir -p /var/log/endpoint2/backup /var/log/endpoint2/logs
+            chown root:root /var/log/endpoint2/logs
+            chmod 0755 /var/log/endpoint2 /var/log/endpoint2/logs
+            start_service endpoint2 endpoint2
+            ;;
+        endpoint3)
+            mkdir -p /var/lib/endpoint3
+            if [ ! -e /var/lib/endpoint3/maintenance.lock ]; then
+                printf 'maintenance mode enabled\n' \
+                    > /var/lib/endpoint3/maintenance.lock
+            fi
+            chown root:root /var/lib/endpoint3/maintenance.lock
+            chmod 0644 /var/lib/endpoint3/maintenance.lock
+            start_service endpoint3 endpoint3 -p 9907
+            ;;
+        endpoint4)
+            mkdir -p /var/lib/endpoint4/stress
+            chown -R endpoint4:endpoint4 /var/lib/endpoint4
+            NOFILE=64
+            [ -r /etc/default/endpoint4 ] && . /etc/default/endpoint4
+            (
+                ulimit -n "$NOFILE"
+                start_service endpoint4 endpoint4
+            )
+            ;;
+    esac
+    echo OK
+}
+
+case "$1" in
+    start)
+        start_scenario
+        ;;
+    stop)
+        printf 'Stopping lab scenario: '
+        stop_services
+        echo OK
+        ;;
+    restart)
+        "$0" stop
+        "$0" start
+        ;;
+    *)
+        echo "Usage: $0 {start|stop|restart}"
+        exit 1
+        ;;
+esac

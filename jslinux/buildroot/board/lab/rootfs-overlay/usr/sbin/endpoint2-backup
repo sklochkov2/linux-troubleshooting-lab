@@ -1,0 +1,17 @@
+#!/bin/sh
+set -eu
+
+[ "$(cat /var/run/lab-scenario 2>/dev/null || true)" = "endpoint2" ] || exit 0
+
+timestamp="$(date +%Y%m%d-%H%M%S)"
+base=/var/log/endpoint2
+old="/tmp/endpoint2-logs-${timestamp}"
+
+mkdir -p "${base}/backup"
+if [ -d "${base}/logs" ]; then
+    mv "${base}/logs" "$old"
+    mkdir -p "${base}/logs"
+    tar -czf "${base}/backup/logs-${timestamp}.tar.gz" \
+        -C /tmp "$(basename "$old")" || true
+    rm -rf "$old"
+fi

@@ -8,12 +8,15 @@ ARTIFACT_DIR     ?= artifacts/$(VERSION)
 TF_DIR           ?= terraform
 TF_VARS_FILE     ?= $(TF_DIR)/terraform.tfvars           # optional, keep gitignored
 TF_AMI_TFVARS    ?= $(TF_DIR)/ami.auto.tfvars            # auto-written (AMI id only)
+JSLINUX_DIR      ?= jslinux
 
 # Help text: run `make help`
 .PHONY: help
 help:
 	@echo "Targets:"
 	@echo "  artifacts        Build local artifacts into $(ARTIFACT_DIR)"
+	@echo "  jslinux-image    Build the browser VM and static site with Docker"
+	@echo "  jslinux-serve    Serve the built browser lab on localhost"
 	@echo "  packer-init      Run 'packer init' for HCL2 plugins"
 	@echo "  packer-validate  Validate Packer template"
 	@echo "  packer-build     Build AMI, then write AMI id to $(TF_AMI_TFVARS)"
@@ -38,6 +41,14 @@ artifacts:
 	./tools/build-rust.sh endpoint3 $(VERSION) $(ARCH)
 	./tools/build-rust.sh endpoint4 $(VERSION) $(ARCH)
 	./tools/build-rust.sh endpoint5 $(VERSION) $(ARCH)
+
+# ----- JSLinux -----
+.PHONY: jslinux-image jslinux-serve
+jslinux-image:
+	$(MAKE) -C $(JSLINUX_DIR) image
+
+jslinux-serve:
+	$(MAKE) -C $(JSLINUX_DIR) serve
 
 # ----- Packer -----
 .PHONY: packer-init

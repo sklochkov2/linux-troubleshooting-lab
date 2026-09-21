@@ -1,0 +1,4 @@
+config BR2_PACKAGE_ENDPOINT3_JS
+	bool "endpoint3-js"
+	help
+	  Minimal HTTP service for the maintenance lock-file puzzle.

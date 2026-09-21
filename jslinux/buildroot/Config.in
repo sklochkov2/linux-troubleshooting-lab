@@ -1,0 +1,6 @@
+menu "Linux troubleshooting lab"
+
+source "$BR2_EXTERNAL_LAB_PATH/package/endpoint3-js/Config.in"
+source "$BR2_EXTERNAL_LAB_PATH/package/lab-endpoints/Config.in"
+
+endmenu

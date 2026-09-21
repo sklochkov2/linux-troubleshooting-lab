@@ -1,0 +1,9 @@
+
+Linux troubleshooting lab
+
+One API is unhealthy. Diagnose and repair it using standard Linux tools.
+The shell displays the selected API path after login.
+
+The indicator beside the console updates from an in-guest probe. Refresh the
+browser page to restore the initial broken state.
+

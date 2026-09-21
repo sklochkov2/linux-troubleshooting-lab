@@ -1,0 +1,5 @@
+config BR2_PACKAGE_LAB_ENDPOINTS
+	bool "lab-endpoints"
+	help
+	  Native services for browser-hosted troubleshooting challenges
+	  1, 2, and 4.

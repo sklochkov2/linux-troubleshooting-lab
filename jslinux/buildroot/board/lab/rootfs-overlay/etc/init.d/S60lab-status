@@ -1,0 +1,30 @@
+#!/bin/sh
+
+PIDFILE=/var/run/lab-status.pid
+
+case "$1" in
+    start)
+        printf 'Starting lab status reporter: '
+        start-stop-daemon -S -q -b -m -p "$PIDFILE" \
+            -x /usr/sbin/lab-status-reporter
+        status=$?
+        [ "$status" -eq 0 ] && echo OK || echo FAIL
+        exit "$status"
+        ;;
+    stop)
+        printf 'Stopping lab status reporter: '
+        start-stop-daemon -K -q -p "$PIDFILE"
+        status=$?
+        [ "$status" -eq 0 ] && echo OK || echo FAIL
+        rm -f "$PIDFILE"
+        exit "$status"
+        ;;
+    restart)
+        "$0" stop
+        "$0" start
+        ;;
+    *)
+        echo "Usage: $0 {start|stop|restart}"
+        exit 1
+        ;;
+esac

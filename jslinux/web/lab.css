@@ -1,0 +1,228 @@
+:root {
+  color-scheme: dark;
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  background: #111315;
+  color: #e7e9ea;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  background: #111315;
+  color: #e7e9ea;
+}
+
+code {
+  color: #c5d8ff;
+}
+
+.lab {
+  width: min(1180px, calc(100% - 32px));
+  margin: 0 auto;
+  padding: 32px 0 24px;
+}
+
+.contents {
+  max-width: 880px;
+}
+
+.contents-header {
+  margin-bottom: 32px;
+}
+
+.back-link {
+  display: inline-block;
+  margin-bottom: 20px;
+  color: #9ebcff;
+  text-decoration: none;
+}
+
+.back-link:hover {
+  text-decoration: underline;
+}
+
+.lab-header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(230px, 300px);
+  gap: 32px;
+  align-items: end;
+  margin-bottom: 24px;
+}
+
+.eyebrow {
+  margin: 0 0 8px;
+  color: #8e969e;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+h1 {
+  margin: 0;
+  font-size: clamp(28px, 4vw, 44px);
+  line-height: 1.05;
+}
+
+.summary {
+  max-width: 680px;
+  margin: 12px 0 0;
+  color: #b4bac0;
+  line-height: 1.55;
+}
+
+.status-panel {
+  display: grid;
+  gap: 5px;
+  padding-left: 18px;
+  border-left: 2px solid #394047;
+}
+
+.status-label,
+.status-detail {
+  color: #8e969e;
+  font-size: 12px;
+}
+
+.status {
+  font-size: 18px;
+}
+
+.status-starting {
+  color: #d9b44a;
+}
+
+.status-unhealthy {
+  color: #ff806f;
+}
+
+.status-healthy {
+  color: #5bd49b;
+}
+
+.status-unknown {
+  color: #b4bac0;
+}
+
+.console-panel {
+  overflow: auto;
+  padding: 16px;
+  border: 1px solid #394047;
+  background: #050607;
+}
+
+#term_wrap {
+  display: none;
+}
+
+#term_container {
+  width: max-content;
+  min-width: 100%;
+}
+
+.console-tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  margin-top: 14px;
+  color: #8e969e;
+  font-size: 12px;
+}
+
+#term_paste {
+  width: min(360px, 100%);
+  min-height: 52px;
+  padding: 7px;
+  resize: none;
+  border: 1px solid #394047;
+  background: #181b1e;
+  color: #e7e9ea;
+}
+
+.challenge-list {
+  display: grid;
+  border-top: 1px solid #394047;
+}
+
+.challenge-list a {
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 20px 4px;
+  border-bottom: 1px solid #394047;
+  color: #e7e9ea;
+  font-size: 18px;
+  font-weight: 650;
+  text-decoration: none;
+}
+
+.challenge-list a:hover {
+  color: #9ebcff;
+}
+
+.challenge-list small {
+  color: #8e969e;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.upload {
+  cursor: pointer;
+}
+
+.upload input {
+  max-width: 190px;
+  margin-left: 6px;
+}
+
+#net_progress {
+  visibility: hidden;
+}
+
+.lab-footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 20px;
+  align-items: center;
+  margin-top: 16px;
+  color: #8e969e;
+  font-size: 12px;
+}
+
+button {
+  padding: 8px 13px;
+  border: 1px solid #66717b;
+  border-radius: 4px;
+  background: #24292e;
+  color: #f1f3f4;
+  cursor: pointer;
+  font: inherit;
+}
+
+button:hover {
+  background: #30363c;
+}
+
+button:focus-visible,
+textarea:focus-visible,
+input:focus-visible {
+  outline: 2px solid #84a9ff;
+  outline-offset: 2px;
+}
+
+@media (max-width: 720px) {
+  .lab {
+    width: min(100% - 20px, 1180px);
+    padding-top: 20px;
+  }
+
+  .lab-header {
+    grid-template-columns: 1fr;
+    gap: 18px;
+  }
+}

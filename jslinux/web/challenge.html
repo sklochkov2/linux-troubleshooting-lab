@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Challenge · Linux troubleshooting lab</title>
+  <link href="jslinux.css" rel="stylesheet">
+  <link href="lab.css?v=__LAB_IMAGE_VERSION__" rel="stylesheet">
+</head>
+<body>
+  <main class="lab">
+    <a class="back-link" href="index.html">← All challenges</a>
+    <header class="lab-header">
+      <div>
+        <p class="eyebrow">JSLinux lab</p>
+        <h1 id="challenge-title">Challenge</h1>
+        <p class="summary">
+          Find why the API is unhealthy and repair it from the Linux console.
+          The page does not contain hints about the underlying failure.
+        </p>
+      </div>
+      <section class="status-panel" aria-live="polite" aria-atomic="true">
+        <span class="status-label">Challenge status</span>
+        <strong id="challenge-status" class="status status-starting">Starting VM</strong>
+        <span id="status-detail" class="status-detail">Waiting for the guest probe</span>
+      </section>
+    </header>
+
+    <section class="console-panel" aria-label="Linux console">
+      <div id="term_wrap">
+        <div id="term_container"></div>
+        <div class="console-tools">
+          <label for="term_paste">Send text to console</label>
+          <textarea
+            id="term_paste"
+            cols="32"
+            rows="2"
+            autocorrect="off"
+            autocapitalize="off"
+            spellcheck="false"
+            placeholder="Enter a command or paste text"
+          ></textarea>
+          <button id="send-console" type="button">Send</button>
+          <button id="send-console-enter" type="button">Send + Enter</button>
+          <label class="upload">
+            Upload files
+            <input type="file" id="files" multiple>
+          </label>
+          <progress id="net_progress" aria-label="Loading guest files"></progress>
+        </div>
+      </div>
+    </section>
+
+    <footer class="lab-footer">
+      <button id="reset-vm" type="button">Reset challenge</button>
+      <span>Reset reloads the immutable broken image.</span>
+      <span>Emulator © 2017–2026 Fabrice Bellard</span>
+    </footer>
+  </main>
+
+  <script src="image-version-__LAB_IMAGE_VERSION__.js"></script>
+  <script src="term.js"></script>
+  <script src="boot-config.js?v=__LAB_IMAGE_VERSION__"></script>
+  <script src="jslinux.js"></script>
+  <script src="lab-ui.js?v=__LAB_IMAGE_VERSION__"></script>
+</body>
+</html>

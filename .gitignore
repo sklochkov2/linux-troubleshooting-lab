@@ -22,6 +22,19 @@ coverage/
 *.tmp
 
 # -------------------------------
+# JSLinux
+# -------------------------------
+# Buildroot downloads, toolchains, intermediate root filesystems, and caches.
+/jslinux/build/
+
+# Deployable site assembled by `make jslinux-image` (Wasm, kernel, and disk).
+/jslinux/dist/
+
+# Optional release bundles created from jslinux/dist per the deployment guide.
+/jslinux-dist-*.tar.gz
+/jslinux-dist-*.sha256
+
+# -------------------------------
 # Go
 # -------------------------------
 # (Go modules: nothing special. Keep go.mod/go.sum.)
